@@ -26,6 +26,7 @@ class CustomerMemoryStore:
                 "provider": "chroma",
                 "config": {
                     "path": str(settings.chroma_mem0_path),
+                    "collection_name" : "support_mem0_gemini_v2"
                 },
             },
         }

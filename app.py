@@ -119,6 +119,7 @@ def render_context(context: dict[str, Any] | None) -> None:
     knowledge_hits = context.get("knowledge_hits") or []
     tool_calls = context.get("tool_calls") or []
     highlights = context.get("highlights") or {}
+    guardrail_outcomes = context.get("guardrail_outcomes") or {}
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Memory Hits", signals.get("memory_hit_count", len(memory_hits)))
@@ -135,6 +136,23 @@ def render_context(context: dict[str, Any] | None) -> None:
     sources = signals.get("knowledge_sources") or []
     if sources:
         st.caption(f"Knowledge sources: {', '.join(sources)}")
+    if guardrail_outcomes:
+        st.markdown("**Guardrails**")
+        for label, key in (("Input", "input"), ("Output", "output")):
+            outcome = guardrail_outcomes.get(key)
+            if not outcome:
+                continue
+            message = f"{label}: passed"
+            if outcome.get("pii_redacted"):
+                message += " with PII redaction"
+            if outcome.get("passed"):
+                st.success(message)
+            else:
+                st.warning(f"{label}: blocked and escalated")
+            violations = outcome.get("violations") or []
+            if violations:
+                with st.expander(f"{label} guardrail details"):
+                    st.json(outcome)
 
     if any(highlights.get(key) for key in ("memory", "knowledge", "tools")):
         st.markdown("**Highlights**")
@@ -159,7 +177,7 @@ def render_context(context: dict[str, Any] | None) -> None:
             }
             for call in tool_calls
         ]
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        st.dataframe(rows, width = "stretch", hide_index=True)
 
         for index, call in enumerate(tool_calls, start=1):
             title = (
@@ -193,7 +211,7 @@ with st.sidebar:
     st.subheader("API Settings")
     st.code(API_BASE_URL)
 
-    if st.button("Ingest Knowledge Base", use_container_width=True):
+    if st.button("Ingest Knowledge Base", width = "stretch"):
         try:
             result = ingest_knowledge(clear_existing=False)
             st.success(
@@ -274,7 +292,7 @@ else:
         st.write(f"Status: {selected_ticket['status']}")
         st.write(selected_ticket["description"])
 
-    if st.button("Generate Draft", use_container_width=True):
+    if st.button("Generate Draft", width = "stretch"):
         try:
             new_draft = trigger_draft(selected_ticket["id"])
             st.session_state[f"draft_{selected_ticket['id']}"] = new_draft
@@ -300,7 +318,7 @@ else:
 
         c3, c4 = st.columns(2)
         with c3:
-            if st.button("Accept Draft", use_container_width=True):
+            if st.button("Accept Draft", ):
                 try:
                     updated = update_draft(draft_data["id"], edited_content, "accepted")
                     st.session_state[f"draft_{selected_ticket['id']}"] = updated
@@ -309,7 +327,7 @@ else:
                     st.error(f"Failed to accept draft: {exc}")
 
         with c4:
-            if st.button("Discard Draft", use_container_width=True):
+            if st.button("Discard Draft", width = "stretch"):
                 try:
                     updated = update_draft(draft_data["id"], edited_content, "discarded")
                     st.session_state[f"draft_{selected_ticket['id']}"] = updated
